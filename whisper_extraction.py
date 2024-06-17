@@ -113,7 +113,7 @@ program_start_time = time.time()
 
 async def process_videos(videos):
     # Обработка первых 1500 записей
-    for i, (video_id, video_info) in enumerate(list(videos.items())[1600:1620]):
+    for i, (video_id, video_info) in enumerate(list(videos.items())[2500:2600]):
         if video_id in transcriptions or video_id in none_transcriptions or video_id in transcriptions_fail:
             logging.info(f"Skipping already processed video ID: {video_id}")
             continue

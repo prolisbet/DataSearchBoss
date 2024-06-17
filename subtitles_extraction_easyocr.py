@@ -16,18 +16,21 @@ subtitles_extraction_dir = 'subtitles_extraction'
 os.makedirs(subtitles_extraction_dir, exist_ok=True)
 
 # Имена файлов для результатов
-subtitles_json_file = os.path.join(subtitles_extraction_dir, 'subtitles_easyocr.json')
-none_subtitles_json_file = os.path.join(subtitles_extraction_dir, 'none_subtitles_1.json')
-subtitles_fail_json_file = os.path.join(subtitles_extraction_dir, 'subtitles_fail.json')
+# subtitles_json_file = os.path.join(subtitles_extraction_dir, 'subtitles_easyocr.json')
+# subtitles_json_file = os.path.join(subtitles_extraction_dir, 'FINAL_subtitles_easyocr_Lisa.json')
+# none_subtitles_json_file = os.path.join(subtitles_extraction_dir, 'none_subtitles_1.json')
+# subtitles_fail_json_file = os.path.join(subtitles_extraction_dir, 'subtitles_fail.json')
 
 # Инициализация EasyOCR
 reader = easyocr.Reader(['ru', 'en'])
+
 
 # Функция для предобработки кадра
 def preprocess_frame(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.medianBlur(gray, 5)
     return gray
+
 
 # Функция для извлечения субтитров
 def extract_subtitles_from_frame(frame):
@@ -75,9 +78,6 @@ def clean_subtitles_text(text):
         # Убираем слова, в которых есть более 3 согласных подряд
         text = re.sub(r'\b\w*[бвгджзйклмнпрстфхцчшщ]{4,}\w*\b', '', text, flags=re.IGNORECASE)
 
-        # Убираем слова, записанные буквами разного регистра
-        text = ' '.join([word for word in text.split() if word.islower() or word.isupper()])
-
         # Убираем все слова, состоящие из 3-х символов и меньше
         text = ' '.join([word for word in text.split() if len(word) > 3])
 
@@ -99,23 +99,25 @@ def clean_subtitles_text(text):
 #         logging.error(f"Ошибка очистки текста субтитров: {str(e)}")
 #         return ""
 
-def append_to_json_file(file_path, new_data):
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            existing_data = json.load(file)
-    except FileNotFoundError:
-        existing_data = {}
 
-    if not isinstance(existing_data, dict):
-        raise ValueError("Existing data should be a dictionary.")
+# def append_to_json_file(file_path, new_data):
+#     try:
+#         with open(file_path, 'r', encoding='utf-8') as file:
+#             existing_data = json.load(file)
+#     except FileNotFoundError:
+#         existing_data = {}
+#
+#     if not isinstance(existing_data, dict):
+#         raise ValueError("Existing data should be a dictionary.")
+#
+#     if not isinstance(new_data, dict):
+#         raise ValueError("New data should be a dictionary.")
+#
+#     existing_data.update(new_data)
+#
+#     with open(file_path, 'w', encoding='utf-8') as file:
+#         json.dump(existing_data, file, ensure_ascii=False, indent=4)
 
-    if not isinstance(new_data, dict):
-        raise ValueError("New data should be a dictionary.")
-
-    existing_data.update(new_data)
-
-    with open(file_path, 'w', encoding='utf-8') as file:
-        json.dump(existing_data, file, ensure_ascii=False, indent=4)
 
 try:
     with open(all_videos_file, 'r', encoding='utf-8') as f:
@@ -127,18 +129,50 @@ except json.JSONDecodeError as e:
     logging.error(f"Ошибка декодирования JSON в файле {all_videos_file}: {str(e)}")
     raise
 
-# Ограничение количества видео для тестирования (обрабатываем только первые 50 видео)
-all_videos = dict(list(all_videos.items())[:10])
+# Ограничение количества видео для тестирования (обрабатываем только первые 700 видео)
+all_videos = dict(list(all_videos.items())[250:600])
 
-subtitles_results = {}
-none_subtitles_results = {}
-subtitles_fail_results = {}
+# subtitles_results = {}
+# none_subtitles_results = {}
+# subtitles_fail_results = {}
+
+
+# Функция для загрузки состояния из файла
+def load_state(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
+
+
+# Загрузка предыдущего состояния
+subtitles_results = load_state('subtitles_extraction/FINAL_subtitles_easyocr_Lisa.json')
+none_subtitles_results = load_state('subtitles_extraction/none_subtitles_1.json')
+subtitles_fail_results = load_state('subtitles_extraction/subtitles_fail.json')
+
+
+# Функция для сохранения состояния в файл
+def save_state(file_path, data):
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(data, file, ensure_ascii=False, indent=4)
+
 
 program_start_time = time.time()
 
+# subtitles_json_file = os.path.join(subtitles_extraction_dir, 'FINAL_subtitles_easyocr_Lisa.json')
+# none_subtitles_json_file = os.path.join(subtitles_extraction_dir, 'none_subtitles_1.json')
+# subtitles_fail_json_file = os.path.join(subtitles_extraction_dir, 'subtitles_fail.json')
+
 for index, (video_id, video_info) in enumerate(all_videos.items(), start=1):
+    if (video_id in subtitles_results or video_id in none_subtitles_results or
+            video_id in subtitles_fail_results):
+        logging.info(f"Skipping already processed video ID: {video_id}")
+        continue
+
     url = video_info['url']
     logging.info(f'Processing {index}/{len(all_videos)}: ID={video_id}, URL={url}')
+    start_time = time.time()
     try:
         video_data = requests.get(url).content
         video_path = f'temp_video_{video_id}.mp4'
@@ -149,7 +183,6 @@ for index, (video_id, video_info) in enumerate(all_videos.items(), start=1):
         if not cap.isOpened():
             raise Exception("Cannot open video")
 
-        start_time = time.time()
         frame_count = 0  # Счетчик обработанных кадров
         fps = cap.get(cv2.CAP_PROP_FPS)
         video_duration = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / fps
@@ -177,6 +210,7 @@ for index, (video_id, video_info) in enumerate(all_videos.items(), start=1):
                 "frame_count": frame_count,
                 "subtitles": subtitles
             }
+            save_state('subtitles_extraction/FINAL_subtitles_easyocr_Lisa.json', subtitles_results)
             logging.info(f'Subtitles: {subtitles}')
         else:
             none_subtitles_results[video_id] = {
@@ -186,6 +220,7 @@ for index, (video_id, video_info) in enumerate(all_videos.items(), start=1):
                 "frame_count": frame_count,
                 "subtitles": None
             }
+            save_state('subtitles_extraction/none_subtitles_1.json', none_subtitles_results)
 
         cap.release()
         os.remove(video_path)
@@ -193,17 +228,21 @@ for index, (video_id, video_info) in enumerate(all_videos.items(), start=1):
             f'Processed {index}/{len(all_videos)}: ID={video_id}, Duration={video_duration:.2f}s, Frames={frame_count}, Time={processing_time:.2f}s')
 
     except Exception as e:
+        error_name = e.__class__.__name__
+        error_description = str(e)
+        logging.error(f"Failed to process {index}/{len(all_videos)}: ID={video_id}, "
+                      f"Error={error_name}, {error_description}")
         processing_time = time.time() - start_time
         subtitles_fail_results[video_id] = {
             "url": url,
             "video_url": url,
             "error": str(e)
         }
-        logging.error(f'Failed to process {index}/{len(all_videos)}: ID={video_id}, Error={str(e)}')
+        save_state('subtitles_extraction/subtitles_fail.json', subtitles_fail_results)
 
-append_to_json_file(subtitles_json_file, subtitles_results)
-append_to_json_file(none_subtitles_json_file, none_subtitles_results)
-append_to_json_file(subtitles_fail_json_file, subtitles_fail_results)
+# append_to_json_file(subtitles_json_file, subtitles_results)
+# append_to_json_file(none_subtitles_json_file, none_subtitles_results)
+# append_to_json_file(subtitles_fail_json_file, subtitles_fail_results)
 
 program_end_time = time.time()
 program_execution_time = program_end_time - program_start_time

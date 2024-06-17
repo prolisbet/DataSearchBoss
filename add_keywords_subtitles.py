@@ -112,7 +112,9 @@ def extract_keywords(text):
 
 # Загрузка JSON-файла
 try:
-    with open('subtitles_extraction/subtitles_1.json', 'r', encoding='utf-8') as f:
+    # with open('subtitles_extraction/subtitles_1.json', 'r', encoding='utf-8') as f:
+    # with open('subtitles_extraction/FINAL_subtitles_new.json', 'r', encoding='utf-8') as f:
+    with open('subtitles_extraction/FINAL_subtitles_easyocr_Lisa.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
 except FileNotFoundError:
     logging.error("Файл не найден.")
@@ -128,9 +130,9 @@ start_time = time.time()
 for index, (key, video_info) in enumerate(data.items(), start=1):
     subtitles = video_info.get("subtitles", "")
     video_url = video_info.get("url", "")
-    key_words = video_info.get("keywords", None)
+    # key_words = video_info.get("keywords", None)
 
-    if subtitles and not key_words:
+    if subtitles:  # and not key_words:
         start_extraction_time = time.time()
         key_words = extract_keywords(subtitles)
         extraction_time = time.time() - start_extraction_time
@@ -142,14 +144,16 @@ for index, (key, video_info) in enumerate(data.items(), start=1):
         logging.info(f"Субтитры: {subtitles}")
         logging.info(f"Ключевые слова: {key_words}")
         logging.info(f"Время извлечения ключевых слов: {extraction_time:.4f} секунд")
-    elif key_words:
-        logging.info(f"Видео №{index} уже обработано. Пропуск.")
+    # elif key_words:
+    #     logging.info(f"Видео №{index} уже обработано. Пропуск.")
     else:
         video_info["keywords"] = None
 
 # Сохранение обновленного JSON-файла
 try:
-    with open('subtitles_extraction/new_subtitles_1.json', 'w', encoding='utf-8') as f:
+    # with open('subtitles_extraction/new_subtitles_1.json', 'w', encoding='utf-8') as f:
+    # with open('subtitles_extraction/FINAL_subtitles_new.json', 'w', encoding='utf-8') as f:
+    with open('subtitles_extraction/FINAL_subtitles_easyocr_Lisa_key.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 except IOError:
     logging.error("Ошибка записи JSON-файла.")
@@ -163,7 +167,9 @@ without_keywords = len(data) - with_keywords
 end_time = time.time()
 total_time = end_time - start_time
 
-logging.info(f"Обработка завершена. Обновленный файл сохранен как 'new_subtitles_1.json'.")
+# logging.info(f"Обработка завершена. Обновленный файл сохранен как 'new_subtitles_1.json'.")
+# logging.info(f"Обработка завершена. Обновленный файл сохранен как 'FINAL_subtitles_new.json'.")
+logging.info(f"Обработка завершена. Обновленный файл сохранен как 'FINAL_subtitles_easyocr_Lisa.json'.")
 logging.info(f"Общее время выполнения программы: {total_time:.4f} секунд")
 logging.info(f"Количество записей с ключевыми словами: {with_keywords}")
 logging.info(f"Количество записей без ключевых слов: {without_keywords}")
